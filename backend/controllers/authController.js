@@ -88,10 +88,10 @@ exports.login = async (req, res) => {
 
     const token = generateToken(user.id)
 
-    const { id, name, email, createdAt } = user
+    const { id, name, email: userEmail, createdAt } = user
 
     return res.json({
-      user: { id, name, email, createdAt },
+      user: { id, name, email: userEmail, createdAt },
       token
     })
 
