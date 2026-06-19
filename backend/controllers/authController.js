@@ -39,8 +39,10 @@ exports.register = async (req, res) => {
 
     const token = generateToken(user.id)
 
+    const { id, name: userName, email: userEmail, createdAt } = user
+
     return res.status(201).json({
-      user,
+      user: { id, name: userName, email: userEmail, createdAt },
       token
     })
 
@@ -86,8 +88,10 @@ exports.login = async (req, res) => {
 
     const token = generateToken(user.id)
 
+    const { id, name, email, createdAt } = user
+
     return res.json({
-      user,
+      user: { id, name, email, createdAt },
       token
     })
 
