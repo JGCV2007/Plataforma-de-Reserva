@@ -2,10 +2,26 @@ const prisma = require('../config/prisma')
 const crypto = require('crypto')
 const { reservationSchema } = require('../validations/reservationValidation')
 
-exports.create = async (req, res) => {
+function parseReservationDate(date, time) {
+  const parsed = new Date(`${date}T${time}:00`)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
 
+exports.list = async (req, res) => {
   try {
+    const reservations = await prisma.reservation.findMany({
+      where: { userId: req.userId },
+      orderBy: { date: 'asc' }
+    })
 
+    return res.json(reservations)
+  } catch (error) {
+    return res.status(500).json(error)
+  }
+}
+
+exports.create = async (req, res) => {
+  try {
     const validation = reservationSchema.safeParse(req.body)
 
     if (!validation.success) {
@@ -14,14 +30,20 @@ exports.create = async (req, res) => {
       })
     }
 
-    const { date } = req.body
+    const { date, time } = req.body
+    const reservationDate = parseReservationDate(date, time)
 
-    const existingReservation =
-      await prisma.reservation.findFirst({
-        where: {
-          date: new Date(date)
-        }
+    if (!reservationDate) {
+      return res.status(400).json({
+        error: 'Data ou hora inválida'
       })
+    }
+
+    const existingReservation = await prisma.reservation.findFirst({
+      where: {
+        date: reservationDate
+      }
+    })
 
     if (existingReservation) {
       return res.status(400).json({
@@ -31,32 +53,56 @@ exports.create = async (req, res) => {
 
     const token = crypto.randomUUID()
 
-    const reservation =
-      await prisma.reservation.create({
-        data: {
-          date: new Date(date),
-          token,
-          userId: req.userId
-        }
-      })
+    const reservation = await prisma.reservation.create({
+      data: {
+        date: reservationDate,
+        token,
+        userId: req.userId
+      }
+    })
 
     return res.status(201).json(reservation)
-
   } catch (error) {
     return res.status(500).json(error)
   }
 }
 
-exports.confirm = async (req, res) => {
-
+exports.confirmById = async (req, res) => {
   try {
+    const { id } = req.params
 
+    const reservation = await prisma.reservation.findUnique({
+      where: { id }
+    })
+
+    if (!reservation) {
+      return res.status(404).json({
+        error: 'Reserva nao encontrada'
+      })
+    }
+
+    await prisma.reservation.update({
+      where: { id },
+      data: {
+        status: 'CONFIRMED'
+      }
+    })
+
+    return res.json({
+      message: 'Reserva confirmada'
+    })
+  } catch (error) {
+    return res.status(500).json(error)
+  }
+}
+
+exports.confirmByToken = async (req, res) => {
+  try {
     const { token } = req.params
 
-    const reservation =
-      await prisma.reservation.findUnique({
-        where: { token }
-      })
+    const reservation = await prisma.reservation.findUnique({
+      where: { token }
+    })
 
     if (!reservation) {
       return res.status(404).json({
@@ -74,7 +120,6 @@ exports.confirm = async (req, res) => {
     return res.json({
       message: 'Reserva confirmada'
     })
-
   } catch (error) {
     return res.status(500).json(error)
   }

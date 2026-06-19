@@ -9,7 +9,7 @@ const app = express()
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://plataforma-de-resreva.vercel.app"
+    "https://plataforma-de-reserva.vercel.app"
   ]
 }))
 
